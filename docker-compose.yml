@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  rclone-input:
+    image: rclone/rclone:latest
+    command: mount pamdata-gcs:pamdata-app-intermediates/appdev/minke_test_data /mnt/input --allow-other --vfs-cache-mode writes --config /config/rclone.conf --allow-non-empty
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - .:/config
+      - ./input:/mnt/input:shared
+  rclone-output:
+    image: rclone/rclone:latest
+    command: mount pamdata-gcs:pamdata-app-outputs/appdev/test_output_wav_reader /mnt/output --allow-other --vfs-cache-mode writes --config /config/rclone.conf --allow-non-empty
+    cap_add:
+      - SYS_ADMIN
+    devices:
+      - /dev/fuse
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - .:/config
+      - ./output:/mnt/output:shared
+  wav-md5-tester:
+    #build:
+    #  context: .
+    image: us-east4-docker.pkg.dev/ggn-nmfs-pamdata-prod-1/pamdata-docker-repo/md5-tester:latest
+    depends_on:
+      - rclone-input
+      - rclone-output
+    volumes:
+      - ./input:/input:shared,ro
+      - ./output:/output:shared

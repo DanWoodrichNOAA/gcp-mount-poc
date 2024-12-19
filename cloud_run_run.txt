@@ -1,0 +1,35 @@
+(publish container)
+
+gcloud auth configure-docker us-east4-docker.pkg.dev
+
+docker tag daniel_woodrich_noaa_gov-wav-md5-tester us-east4-docker.pkg.dev/ggn-nmfs-pamdata-prod-1/pamdata-docker-repo/md5-tester:latest
+
+#at some point, figure out how to register destination as a approved source- think I need docker 'notary' companion package. 
+DOCKER_CONTENT_TRUST=0 docker push us-east4-docker.pkg.dev/ggn-nmfs-pamdata-prod-1/pamdata-docker-repo/md5-tester:latest
+
+(after container published to artifact registry)
+
+#try again to run in docker compose, this time instead of builing pulling from source
+
+(sub out 
+
+build: 
+  context: . 
+
+with
+
+image:  us-east4-docker.pkg.dev/ggn-nmfs-pamdata-prod-1/pamdata-docker-repo/md5-tester:latest
+
+then run docker compose up --build (build needed to replace local image with image from source) . 
+
+OTHER SERVICE TEST:
+
+deploy to cloud run: 
+
+gcloud beta run jobs deploy md5-tester --image us-east4-docker.pkg.dev/ggn-nmfs-pamdata-prod-1/pamdata-docker-repo/md5-tester:latest --add-volume name=input-volume,type=cloud-storage,bucket=pamdata-app-intermediates,mount-options=only-dir=appdev/minke_test_data/ --add-volume name=output-volume,type=cloud-storage,bucket=pamdata-app-outputs,mount-options=only-dir=appdev/test_output_wav_reader/ --add-volume-mount volume=input-volume,mount-path=/input --add-volume-mount volume=output-volume,mount-path=/output --service-account=app-dev-sa@ggn-nmfs-pamdata-prod-1.iam.gserviceaccount.com --region=us-east4
+
+gcloud run jobs execute md5-tester --region=us-east4
+
+
+(script can be created to managed both the deploy and execute. volume mounts need to be defined at deploy time. After running,
+can delete the specific volume job. Not sure of how this might perform in practice)
